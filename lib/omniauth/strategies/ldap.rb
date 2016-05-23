@@ -58,13 +58,13 @@ module OmniAuth
       end
 
       uid {
-        @user_info["uid"]
+        @ldap_user_info[options[:uid]]
       }
       info {
         @user_info
       }
       extra {
-        { :raw_info => @ldap_user_info }
+        { raw_info: @ldap_user_info }
       }
 
       def self.map_user(mapper, object)
@@ -86,6 +86,7 @@ module OmniAuth
             end
           end
         end
+        user['groups'] = object['memberof'] 
         user
       end
 
