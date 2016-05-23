@@ -17,7 +17,8 @@ module OmniAuth
         'uid' => 'dn',
         'url' => ['wwwhomepage'],
         'image' => 'jpegPhoto',
-        'description' => 'description'
+        'description' => 'description',
+        'groups' => ['groups', 'memberof']
       }
       option :title, "LDAP Authentication" #default title for authentication form
       option :port, 389
@@ -58,13 +59,13 @@ module OmniAuth
       end
 
       uid {
-        @user_info["uid"]
+        @ldap_user_info[options[:uid]]
       }
       info {
         @user_info
       }
       extra {
-        { :raw_info => @ldap_user_info }
+        { raw_info: @ldap_user_info }
       }
 
       def self.map_user(mapper, object)
