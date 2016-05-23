@@ -17,7 +17,8 @@ module OmniAuth
         'uid' => 'dn',
         'url' => ['wwwhomepage'],
         'image' => 'jpegPhoto',
-        'description' => 'description'
+        'description' => 'description',
+        'groups' => ['groups', 'memberof']
       }
       option :title, "LDAP Authentication" #default title for authentication form
       option :port, 389
@@ -86,7 +87,7 @@ module OmniAuth
             end
           end
         end
-        user['groups'] = object['memberof'] 
+        user['groups'] = object[:memberof].map &:to_s 
         user
       end
 
