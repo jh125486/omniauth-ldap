@@ -13,15 +13,17 @@ module OmniAuth
       class AuthenticationError < StandardError; end
       class ConnectionError < StandardError; end
 
-      VALID_ADAPTER_CONFIGURATION_KEYS = [:host, :port, :method, :bind_dn, :password, :try_sasl, :sasl_mechanisms, :uid, :base, :allow_anonymous, :filter]
+      VALID_ADAPTER_CONFIGURATION_KEYS = [:host, :port, :method, :bind_dn, :password, :try_sasl, :sasl_mechanisms, :uid, :base, :allow_anonymous, :filter].freeze
 
       # A list of needed keys. Possible alternatives are specified using sub-lists.
-      MUST_HAVE_KEYS = [:host, :port, :method, [:uid, :filter], :base]
+      MUST_HAVE_KEYS = [:host, :port, :method, [:uid, :filter], :base].freeze
 
       METHOD = {
-        :ssl => :simple_tls,
-        :tls => :start_tls,
-        :plain => nil,
+        ssl: :simple_tls,
+        simple_tls: :simple_tls,
+        tls: :start_tls,
+        start_tls: :start_tls,
+        plain: nil,
       }
 
       attr_accessor :bind_dn, :password
@@ -35,7 +37,7 @@ module OmniAuth
             message << names.join(' or ')
           end
         end
-        raise ArgumentError.new(message.join(",") +" MUST be provided") unless message.empty?
+        raise ArgumentError.new(message.join(',') + ' MUST be provided') unless message.empty?
       end
       def initialize(configuration={})
         Adaptor.validate(configuration)
@@ -45,23 +47,18 @@ module OmniAuth
         VALID_ADAPTER_CONFIGURATION_KEYS.each do |name|
           instance_variable_set("@#{name}", @configuration[name])
         end
-        method = ensure_method(@method)
         config = {
-          :host => @host,
-          :port => @port,
-          :base => @base
+          host: @host,
+          port: @port,
+          base: @base,
+          encryption: ensure_method(@method)
         }
         @bind_method = @try_sasl ? :sasl : (@allow_anonymous||!@bind_dn||!@password ? :anonymous : :simple)
 
-
-        @auth = sasl_auths({:username => @bind_dn, :password => @password}).first if @bind_method == :sasl
-        @auth ||= { :method => @bind_method,
-                    :username => @bind_dn,
-                    :password => @password
-                  }
+        @auth = sasl_auths({username: @bind_dn, password: @password}).first if @bind_method == :sasl
+        @auth ||= {method: @bind_method, username: @bind_dn, password: @password}
         config[:auth] = @auth
         @connection = Net::LDAP.new(config)
-        @connection.encryption(method)
       end
 
       #:base => "dc=yourcompany, dc=com",
@@ -76,10 +73,9 @@ module OmniAuth
             method = args[:method] || @method
             password = password.call if password.respond_to?(:call)
             if method == 'sasl'
-            result = rs.first if me.bind(sasl_auths({:username => dn, :password => password}).first)
+              result = rs.first if me.bind(sasl_auths({username: dn, :password: password}).first)
             else
-            result = rs.first if me.bind(:method => :simple, :username => dn,
-                                :password => password)
+              result = rs.first if me.bind(method: :simple, username: dn, password: password)
             end
           end
         end
@@ -119,7 +115,7 @@ module OmniAuth
         bind_dn = options[:username]
         initial_credential = ""
         challenge_response = Proc.new do |cred|
-          pref = SASL::Preferences.new :digest_uri => "ldap/#{@host}", :username => bind_dn, :has_password? => true, :password => options[:password]
+          pref = SASL::Preferences.new digest_uri: "ldap/#{@host}", username: bind_dn, :has_password? => true, password: options[:password]
           sasl = SASL.new("DIGEST-MD5", pref)
           response = sasl.receive("challenge", cred)
           response[1]
@@ -136,7 +132,7 @@ module OmniAuth
           t2_msg = Net::NTLM::Message.parse( challenge )
           bind_dn, domain = bind_dn.split('\\').reverse
           t2_msg.target_name = Net::NTLM::encode_utf16le(domain) if domain
-          t3_msg = t2_msg.response( {:user => bind_dn, :password => psw}, {:ntlmv2 => true} )
+          t3_msg = t2_msg.response( {user: bind_dn, password: psw}, {ntlmv2: true} )
           t3_msg.serialize
         }
         [Net::NTLM::Message::Type1.new.serialize, nego]
